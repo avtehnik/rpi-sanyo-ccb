@@ -111,7 +111,7 @@ void LC72131_setFreq(float f){
 	printf(" freq = %i \n", freq);
 
 	sprintf(&res[0], "%04x", freq);
-	//strrev(res);
+	strrev(res);
 	
 	unsigned char resF;
 	char sh[100];
