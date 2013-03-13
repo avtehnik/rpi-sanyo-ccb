@@ -2,183 +2,164 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
-#include <arpa/inet.h>
-#include <netinet/in.h>
 #include <sys/types.h>
-#include <sys/socket.h>
-#include <fcntl.h>
-#include <linux/kd.h>
-#include <sys/ioctl.h>
+//#include <fcntl.h>
+//#include <sys/ioctl.h>
 #include <bcm2835.h>
 #include "clientserver.h"
-#include "demonize.h"
+//#include "demonize.h"
 
 /* #define RPI_GPIO_P1_21 RPI_GPIO_P1_21;
 #define RPI_GPIO_P1_19 RPI_GPIO_P1_19;
 #define RPI_GPIO_P1_23 RPI_GPIO_P1_23;
  */
+ 
+#define LC72131_N1  0b00010100
+#define LC72131_N2  0b10010100
+#define DI_PIN RPI_GPIO_P1_19 
+#define CL_PIN RPI_GPIO_P1_21
+#define CE_PIN RPI_GPIO_P1_23
+#define hex2dec(c) ( c-( ((c)<='9') ? '0' : (c>='a') ? 'a'-10 : 'A'-10) ) 
+ 
 int interval;
+char* substring(const char* str, size_t begin, size_t len){ 
+  if (str == 0 || strlen(str) == 0 || strlen(str) < begin || strlen(str) < (begin+len)) 
+    return 0; 
 
-// ia?aaa?a ii oeia MW
-void MWSend ( unsigned char Data ){ 
-   unsigned char i;
-   for ( i = 0; i < 8; i++ ){
-        if ( Data & 0x01 ){
-			bcm2835_gpio_write(RPI_GPIO_P1_23,HIGH);
-			fprintf(stderr, "1");
-        }else{
-			bcm2835_gpio_write(RPI_GPIO_P1_23, LOW);
-        fprintf(stderr, "0");
+  return strndup(str + begin, len); 
+} 
+
+
+void BusStrob(void){
+		bcm2835_gpio_write(CL_PIN, HIGH);
+		usleep(interval);
+		bcm2835_gpio_write(CL_PIN, LOW);
+		usleep(interval);
+}
+
+void strrev(char *p){
+  char *q = p;
+  while(q && *q) ++q;
+  for(--q; p < q; ++p, --q)
+    *p = *p ^ *q,
+    *q = *p ^ *q,
+    *p = *p ^ *q;
+}
+
+void LC72131_Send ( unsigned int ch ){ 
+        int i; 
+		 for (i = 0; i < 8; i++) {
+			if((ch & (0x80 >> i))>0){
+				printf("1");
+				usleep(interval);
+				bcm2835_gpio_write(DI_PIN, HIGH);
+			}else{
+				bcm2835_gpio_write(DI_PIN, LOW);
+				printf("0");
+			}
+			BusStrob();
 		}
-        Data = Data >> 1;
-		usleep(interval);
-		bcm2835_gpio_write(RPI_GPIO_P1_19, HIGH);
-//		bcm2835_gpio_write(RPI_GPIO_P1_23, LOW);
-		usleep(interval);
-        bcm2835_gpio_write(RPI_GPIO_P1_19, LOW);
-		usleep(interval);
-      }
-	return;
+
+	printf("\n");
 }
 
-void InitLC72131(){
-//	InitMW();
-// ia?aaa?a aa?ana
-// 40 - ?anoioa
-// 41 - onoaiiaee
-	bcm2835_gpio_write(RPI_GPIO_P1_21, LOW);
-	MWSend(41);
-	fprintf(stderr, " ");
-	bcm2835_gpio_write(RPI_GPIO_P1_21, HIGH);
-	usleep(interval);
-//5-0,4-0 ioieou ii iienaie?
-	MWSend(128); //aee BO4 (+B i?i)
-	fprintf(stderr, " ");
-// 8-0,7-0,6-0,13-0
-// 10  00  000 0   27/03 - 10110010=0xB2
-	MWSend(0xB2);
-	fprintf(stderr, " ");
-// 12-0,11-1,10-0,9-1,3-0
-// 000  1    0    1   00   00010100=20
-	MWSend(0);
-	fprintf(stderr, " ");
-	bcm2835_gpio_write(RPI_GPIO_P1_21, LOW);
-	return;	
-	}
-
-// iano?ieea ?anoiou LC72131
-void DLL_Freq(unsigned int FFreq	,unsigned char StepFreq){
-	unsigned char P0,P1,RDD;
-	unsigned int FreqT;
-// ia?an?ao ?anoiou iia i?eaiiee (f+10,7)/0,025/2=(f+10,7)/0,05
-// eee (f+10,7)/0,005/2=(f+10,7)/0,01 a caaeneiinoe io aeaiaciia
-
-	if (StepFreq==1){
-		FreqT=FFreq+1070; //i?eaiiee
-//		FreqT=FFreq;	//ia?aaao?ee
-		// aey iaoaai - fref=5kHz eaa?o 4,5IAo
-		// 2     3 1
-		// 10100 0 10 10100010=128+32+2=162
-		RDD=0xA2;//aey 4,5IAo
-//		RDD=0xAA;//aey 7,2IAo
-	}else{
-		FreqT=FFreq/5+214;	//i?eaiiee
-//		FreqT=FFreq/5;	//ia?aaao?ee
-		// aey aey ao??oeneiai - fref=25kHz eaa?o 4,5IAo
-		// 2     3 1
-		// 00100 0 10  00100010=32+2=34
-		RDD=0x32;//aey 4,5IAo
-//		RDD=0x3A;//aey 7,2IAo		
-	}
-	P1=FreqT/256;
-	P0=FreqT-P1*256;
-
-// ia?aaa?a a PLL
-	bcm2835_gpio_write(RPI_GPIO_P1_21, LOW);
-	MWSend(40); // aa?an
-	fprintf(stderr, " ");
-	bcm2835_gpio_write(RPI_GPIO_P1_21, HIGH);
-	usleep(interval);
-	MWSend(P0);
-	fprintf(stderr, " ");
-	MWSend(P1);
-	fprintf(stderr, " ");
-	MWSend(RDD);
-	fprintf(stderr, " ");
-	bcm2835_gpio_write(RPI_GPIO_P1_21, LOW);
-return;
-}
-
-
-
-
-int main(int argc, char **argv) {
-unsigned int FFreq;
-unsigned char StepFreq;
-    struct sockaddr_in si_local, si_remote;
-    int s, port;
-    size_t slen;
-    char buf[BUFLEN];
-
-
+void initGPIO(){
 	if (!bcm2835_init()){
 		return 1;
 	}
-
-	bcm2835_gpio_fsel(RPI_GPIO_P1_19, BCM2835_GPIO_FSEL_OUTP); 
-	bcm2835_gpio_fsel(RPI_GPIO_P1_21, BCM2835_GPIO_FSEL_OUTP); 
-	bcm2835_gpio_fsel(RPI_GPIO_P1_23, BCM2835_GPIO_FSEL_OUTP); 
-	
-    slen = sizeof (si_remote);
-    if (argc != 3) {
-        fprintf(stderr, "Usage: %s <port number>  <interval> \n", argv[0]);
-        exit(EXIT_FAILURE);
-    }
-
-    interval = atoi(argv[2]);
-    port = atoi(argv[1]);
-	InitLC72131();
-	
-    if (port < 1024) {
-        fprintf(stderr, "Usage: %s <port number>  <time delay>  \n", argv[0]);
-        fprintf(stderr, "\twhere <port number> shall be > 1023\n");
-        exit(EXIT_FAILURE);
-    }
-
-/*   demonize(argv[0]); */
-    if ((s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1) {
-        perror("socket");
-        exit(EXIT_FAILURE);
-    }
-
-    memset((char *) &si_local, 0, sizeof (si_local));
-    si_local.sin_family = AF_INET;
-    si_local.sin_port = htons(port);
-    si_local.sin_addr.s_addr = htonl(INADDR_ANY);
-    if (bind(s, (const struct sockaddr *) &si_local, sizeof (si_local)) == -1) {
-        perror("bind");
-        exit(EXIT_FAILURE);
-    }
-
-    while (1) {
-        memset(buf, 0, sizeof (char) *BUFLEN);
-        if (recvfrom(s, buf, BUFLEN, 0, (struct sockaddr *) &si_remote, &slen) == -1) {
-            perror("recvfrom()");
-            exit(EXIT_FAILURE);
-        }
-        fprintf(stderr, " f = %i %i \n" ,buf[1], buf[2] );
-			FFreq = (buf[1]*100)+buf[2];
-			if(FFreq<=7600)StepFreq=1;
-			if(FFreq>=8800)StepFreq=5;
-			//if(FFreq>=11870)FFreq=6395;// íåêðàñèâî, íî ÊÎÐÎÒÊÎ					
-//			if(FFreq>=10800)FFreq=6395;// íåêðàñèâî, íî ÊÎÐÎÒÊÎ
-			FFreq=FFreq-StepFreq;
-	        fprintf(stderr, "init \n");
-			InitLC72131();
-	        fprintf(stderr, "FFreq: %i step: %i \n", FFreq , StepFreq);
-			DLL_Freq(FFreq,StepFreq);
-        }
-
-    close(s);
-    exit(EXIT_SUCCESS);
+	bcm2835_gpio_fsel(CL_PIN, BCM2835_GPIO_FSEL_OUTP); 
+	bcm2835_gpio_fsel(DI_PIN, BCM2835_GPIO_FSEL_OUTP); 
+	bcm2835_gpio_fsel(CE_PIN, BCM2835_GPIO_FSEL_OUTP); 
 }
+
+
+void LC72131_SendN1(){
+	printf("SendN1 \n");
+
+	bcm2835_gpio_write(CE_PIN, LOW);
+	LC72131_Send(LC72131_N1);
+	usleep(interval);
+	bcm2835_gpio_write(CE_PIN, HIGH);
+}
+
+void LC72131_SendN2(){
+	printf("SendN2 \n");
+	bcm2835_gpio_write(CE_PIN, LOW);
+	LC72131_Send(LC72131_N2);
+	usleep(interval);
+	bcm2835_gpio_write(CE_PIN, HIGH);
+}
+
+void LC72131_Init(){
+	LC72131_SendN2();
+	printf("n2 1 ");
+	LC72131_Send(0b11110110);
+	printf("n2 2 ");
+	LC72131_Send(0b11101100);
+	printf("n2 3 ");
+	LC72131_Send(0b01000101);
+}
+
+int reverseBits(int x){
+   return (x * 0x0202020202ULL & 0x010884422010ULL) % 1023;
+}
+
+void LC72131_setFreq(float f){
+	unsigned int out;
+	char res[5]; /* two bytes of hex = 4 characters, plus NULL terminator */
+	int freq = (((f + 10.7)/0.0025)/2)/10; 
+	printf(" freq = %i \n", freq);
+
+	sprintf(&res[0], "%04x", freq);
+	//strrev(res);
+	
+	unsigned char resF;
+	char sh[100];
+	char *stop;
+	unsigned int test;
+		sprintf(sh,"%s", substring(res, 0, 2));
+		test = strtol(reverseBits(sh),&stop,16);
+	
+		printf("Test: %d \n",reverseBits(test));
+		sprintf(sh,"%s", substring(res, 2, 2));
+		test = strtol(sh,&stop,16);
+		printf("Test: %d \n",reverseBits(test));
+
+	
+	LC72131_SendN1();
+	printf("n1 1 \n");
+	LC72131_Send(substring(res, 0, 2));
+	
+	LC72131_Send(substring(res, 0, 2));
+	printf("n1 3 ");
+	LC72131_Send(0b01010101);
+}
+
+
+int main(int argc, char **argv) {
+	
+	interval = 100;
+	initGPIO();
+	
+	bcm2835_gpio_write(CL_PIN, HIGH);
+	bcm2835_gpio_write(DI_PIN, HIGH);
+	bcm2835_gpio_write(CE_PIN, HIGH);
+	usleep(interval);
+	bcm2835_gpio_write(CL_PIN, LOW);
+	bcm2835_gpio_write(DI_PIN, LOW);
+	bcm2835_gpio_write(CE_PIN, LOW);
+
+	
+	LC72131_Init();
+	usleep(interval);
+	printf("setFreq \n");
+
+	LC72131_setFreq(90);
+//	LC72131_setFreq(90);
+	
+	bcm2835_gpio_write(CL_PIN, LOW);
+	bcm2835_gpio_write(DI_PIN, LOW);
+	bcm2835_gpio_write(CE_PIN, LOW);
+	
+}
+
