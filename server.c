@@ -12,6 +12,11 @@
 
 #define LC72131_N1  0b00010100
 #define LC72131_N2  0b10010100
+
+#define LC72131_N2_1 0b11110110;
+#define LC72131_N2_2 0b11101100);
+#define LC72131_N2_3 0b01000101;
+
 #define DI_PIN RPI_GPIO_P1_19 
 #define CL_PIN RPI_GPIO_P1_21
 #define CE_PIN RPI_GPIO_P1_23
@@ -46,9 +51,7 @@ void LC72131_Send ( unsigned int ch ){
 }
 
 void initGPIO(){
-	if (!bcm2835_init()){
-		return 1;
-	}
+	bcm2835_init();
 	bcm2835_gpio_fsel(CL_PIN, BCM2835_GPIO_FSEL_OUTP); 
 	bcm2835_gpio_fsel(DI_PIN, BCM2835_GPIO_FSEL_OUTP); 
 	bcm2835_gpio_fsel(CE_PIN, BCM2835_GPIO_FSEL_OUTP); 
@@ -56,13 +59,10 @@ void initGPIO(){
 	bcm2835_gpio_write(CL_PIN, LOW);
 	bcm2835_gpio_write(DI_PIN, LOW);
 	bcm2835_gpio_write(CE_PIN, LOW);
-
 }
 
 
 void LC72131_SendN1(){
-	printf("SendN1 \n");
-
 	bcm2835_gpio_write(CE_PIN, LOW);
 	LC72131_Send(LC72131_N1);
 	usleep(interval);
@@ -70,7 +70,6 @@ void LC72131_SendN1(){
 }
 
 void LC72131_SendN2(){
-	printf("SendN2 \n");
 	bcm2835_gpio_write(CE_PIN, LOW);
 	LC72131_Send(LC72131_N2);
 	usleep(interval);
@@ -79,12 +78,9 @@ void LC72131_SendN2(){
 
 void LC72131_Init(){
 	LC72131_SendN2();
-	printf("n2 1 ");
-	LC72131_Send(0b11110110);
-	printf("n2 2 ");
-	LC72131_Send(0b11101100);
-	printf("n2 3 ");
-	LC72131_Send(0b01000101);
+	LC72131_Send(LC72131_N2_1);
+	LC72131_Send(LC72131_N2_2);
+	LC72131_Send(LC72131_N2_3);
 }
  
 unsigned char reverse_byte(unsigned char x){
