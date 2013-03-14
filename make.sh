@@ -1,6 +1,3 @@
 gcc -pedantic -Wall -g -O2   -c -o demonize.o demonize.c
-
-gcc -pedantic -Wall -g -O2   -c -o server.o server.c 
-
-gcc -o fm_server server.o demonize.o -lrt -lbcm2835
-sudo ./fm_server
+gcc -pedantic -Wall -g -O2   -c -o fm_control.o fm_control.c 
+gcc -o fm_control fm_control.o demonize.o -lrt -lbcm2835
