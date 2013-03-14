@@ -1,6 +1,4 @@
-To start server
+usage
 
-sudo ./udp_server  <port> <delay>
+sudo ./fm_control 105.0
 
-
-./udp_client  10.0.1.12 1099 7
