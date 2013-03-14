@@ -9,18 +9,17 @@
 #include "clientserver.h"
 //#include "demonize.h"
 
-
 #define LC72131_N1  0b00010100
 #define LC72131_N2  0b10010100
 
 #define LC72131_N2_1 0b11110110
-#define LC72131_N2_2 0b11101100
-#define LC72131_N2_3 0b01000101
+#define LC72131_N2_2 0b00000000
+#define LC72131_N2_3 0b00000000
 
 #define DI_PIN RPI_GPIO_P1_19 
 #define CL_PIN RPI_GPIO_P1_21
 #define CE_PIN RPI_GPIO_P1_23
-#define hex2dec(c) ( c-( ((c)<='9') ? '0' : (c>='a') ? 'a'-10 : 'A'-10) ) 
+
 #define HiBYTE(w) (uint8_t)((w >> 8) & 0x00ff)
 #define LoBYTE(w) (uint8_t)((w >> 0) & 0x00ff)
  
@@ -37,17 +36,16 @@ void LC72131_Send ( unsigned int ch ){
         int i; 
 		 for (i = 0; i < 8; i++) {
 			if((ch & (0x80 >> i))>0){
-				printf("1");
+				/*printf("1");*/
 				usleep(interval);
 				bcm2835_gpio_write(DI_PIN, HIGH);
 			}else{
 				bcm2835_gpio_write(DI_PIN, LOW);
-				printf("0");
+				/*printf("0");*/
 			}
 			BusStrob();
 		}
-
-	printf("\n");
+	/*printf("\n");*/
 }
 
 void initGPIO(){
@@ -121,25 +119,34 @@ unsigned char reverse_byte(unsigned char x){
     return table[x];
 }
 
-void LC72131_setFreq(float f){
-
-	uint16_t freq = (((f + 10.7)/0.0025)/2)/10; 
-	printf(" freq = %i \n", freq);
+void LC72131_setFreq(double f){
+	uint16_t freq = (((f + 10.7)/0.005)/2)/10; 
+	printf("f = %4.2f, decimal = %i, PLL fref = 50khz \n",f, freq);
 	LC72131_SendN1();
 	LC72131_Send(reverse_byte(LoBYTE(freq)));
 	LC72131_Send(reverse_byte(HiBYTE(freq)));
-	LC72131_Send(0b01010101);
+	LC72131_Send(0b01001000);
+//////////////////|--------|	
+	bcm2835_gpio_write(CL_PIN, LOW);
+	bcm2835_gpio_write(DI_PIN, LOW);
+	bcm2835_gpio_write(CE_PIN, LOW);
+
 }
 
 
 int main(int argc, char **argv) {
 	
+    if (argc != 2) {
+        fprintf(stderr, "Usage: %s <frequency*10> \n", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
 	interval = 100;
 	initGPIO();
+	double f = atof(argv[1]);
 	LC72131_Init();
+	LC72131_setFreq(f);
 
-	LC72131_setFreq(90);
-
-	
+		
 }
 
