@@ -1,4 +1,4 @@
 usage
 
-sudo ./fm_control 105.0
+sudo ./fm_control <port>
 
