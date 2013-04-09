@@ -20,8 +20,8 @@
 #define LC72131_N2_2 0b00000000
 #define LC72131_N2_3 0b00000000
 
-#define DI_PIN RPI_GPIO_P1_19 
-#define CL_PIN RPI_GPIO_P1_21
+#define DI_PIN RPI_GPIO_P1_21 
+#define CL_PIN RPI_GPIO_P1_19
 #define CE_PIN RPI_GPIO_P1_23
 
 #define HiBYTE(w) (uint8_t)((w >> 8) & 0x00ff)
