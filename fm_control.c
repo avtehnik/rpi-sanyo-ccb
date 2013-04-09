@@ -16,6 +16,8 @@
 #define LC72131_N1  0b00010100
 #define LC72131_N2  0b10010100
 
+#define LC72131_N2_1_poweroff 0b0000000
+
 #define LC72131_N2_1 0b11110110
 #define LC72131_N2_2 0b00000000
 #define LC72131_N2_3 0b00000000
@@ -80,6 +82,13 @@ void LC72131_SendN2(){
 void LC72131_Init(){
 	LC72131_SendN2();
 	LC72131_Send(LC72131_N2_1);
+	LC72131_Send(LC72131_N2_2);
+	LC72131_Send(LC72131_N2_3);
+}
+ 
+void LC72131_PowerOff(){
+	LC72131_SendN2();
+	LC72131_Send(LC72131_N2_1_poweroff);
 	LC72131_Send(LC72131_N2_2);
 	LC72131_Send(LC72131_N2_3);
 }
@@ -169,7 +178,8 @@ int main(int argc, char **argv) {
     }
 
 /*   demonize(argv[0]); */
-	demonize(argv[0]);
+    demonize(argv[0]);
+
     if ((s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1) {
         perror("socket");
         exit(EXIT_FAILURE);
@@ -191,14 +201,20 @@ int main(int argc, char **argv) {
             exit(EXIT_FAILURE);
         }
 		
-//		double f = atof(argv[1]);
-		fPart0 = buf[0];
-		fPart1 = buf[1]/10.0f;
-		frequency  = fPart0+fPart1;
-		if(frequency>90 || frequency<109){
-			LC72131_setFreq(frequency);
-        }
+		if(buf[0]==0){
+			LC72131_PowerOff();
+			LC72131_setFreq(0.0);
+		}else{
+			LC72131_Init();
+			fPart0 = buf[0];
+			fPart1 = buf[1]/10.0f;
+			frequency  = fPart0+fPart1;
+			if(frequency>90 || frequency<109){
+				LC72131_setFreq(frequency);
+			}
+		}
 	}
     close(s);
     exit(EXIT_SUCCESS);
 }
+
